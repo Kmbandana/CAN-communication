@@ -84,17 +84,17 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
   HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_4); // blink LED on RX
 }
 
-// Function to send a message (TX ID is 0x123 for Node A)
+// Function to send a message (TX ID is 0x103 for Node B)
 void CAN_Send(void)
 {
   TxHeader.DLC = 8;
-  TxHeader.StdId = 0x123; // *** NODE A TX ID ***
+  TxHeader.StdId = 0x103; // *** NODE B TX ID ***
   TxHeader.IDE = CAN_ID_STD;
   TxHeader.RTR = CAN_RTR_DATA;
   TxHeader.TransmitGlobalTime = DISABLE;
 
-  // Example data payload (Data 10 to 17)
-  for (int i = 0; i < 8; i++) TxData[i] = 10 + i;
+  // Example data payload (Data 50 to 57)
+  for (int i = 0; i < 8; i++) TxData[i] = 0 + i;
 
   // Check if a TX mailbox is available
   if (HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) == 0)
@@ -103,11 +103,12 @@ void CAN_Send(void)
   }
   else
   {
+
       HAL_StatusTypeDef status = HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox);
 
       if (status == HAL_OK)
       {
-          sprintf(msg, "TX OK ID: 0x%03X Mailbox:%lu DLC:%lu\r\n", (unsigned int)TxHeader.StdId, TxMailbox, TxHeader.DLC);
+          sprintf(msg, "TX OK ID: 0x%03X Mailbox:%lu\r\n", (unsigned int)TxHeader.StdId, TxMailbox);
       }
       else
       {
@@ -118,7 +119,7 @@ void CAN_Send(void)
   HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
 }
 
-// Function to configure filter (RX ID is 0x103 for Node A)
+// Function to configure filter (RX ID is 0x123 for Node B)
 void CAN_ConfigFilter_Specific(void)
 {
   CAN_FilterTypeDef sFilterConfig = {0};
@@ -126,8 +127,8 @@ void CAN_ConfigFilter_Specific(void)
   sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
   sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
 
-  // *** NODE A RX FILTER ID (Listens for Node B's ID) ***
-  sFilterConfig.FilterIdHigh = 0x103 << 5;
+  // *** NODE B RX FILTER ID (Listens for Node A's ID) ***
+  sFilterConfig.FilterIdHigh = 0x123 << 5;
   sFilterConfig.FilterIdLow = 0x0000;
 
   sFilterConfig.FilterMaskIdHigh = 0x7FF << 5; // Exact 11-bit ID match
@@ -152,28 +153,9 @@ void CAN_ConfigFilter_Specific(void)
   */
 int main(void)
 {
-
-  /* USER CODE BEGIN 1 */
-
-  /* USER CODE END 1 */
-
   /* MCU Configuration--------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
   SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_CAN1_Init();
   MX_USART2_UART_Init();
@@ -186,7 +168,7 @@ int main(void)
           Error_Handler();
       }
   else{
-	  sprintf(msg,"CAN RX ready (Node A: Listening for 0x103)\r\n");
+	  sprintf(msg,"CAN RX ready (Node B: Listening for 0x123)\r\n");
 	  HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
   }
 
@@ -200,7 +182,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  CAN_Send(); // Send Node A's message (0x123)
+	  CAN_Send(); // Send Node B's message (0x103)
 	  HAL_Delay(1000); // Wait 1 second before sending again
     /* USER CODE END WHILE */
 
@@ -333,6 +315,7 @@ static void MX_USART2_UART_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
   /* USER CODE BEGIN MX_GPIO_Init_1 */
 
   /* USER CODE END MX_GPIO_Init_1 */
@@ -340,6 +323,16 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PB4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
